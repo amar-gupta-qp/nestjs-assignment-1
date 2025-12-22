@@ -1,0 +1,223 @@
+{
+  "info": {
+    "name": "Billing API - NestJS Assignment",
+    "description": "API collection for testing the Billing Module with coupon discount functionality",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Check the health status of the application and database"
+      },
+      "response": []
+    },
+    {
+      "name": "Metrics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["metrics"]
+        },
+        "description": "Get Prometheus metrics for monitoring"
+      },
+      "response": []
+    },
+    {
+      "name": "Apply Discount - Valid Coupon",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user\": {\n        \"id\": \"user123\",\n        \"assignedCouponCodes\": [\n            \"SAVE10\",\n            \"SUMMER20\"\n        ]\n    },\n    \"coupon\": {\n        \"code\": \"SAVE10\",\n        \"discountAmount\": 10,\n        \"expiryDate\": \"2099-12-31\"\n    },\n    \"originalSubscriptionPrice\": 100\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/billing/apply-discount",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["billing", "apply-discount"]
+        },
+        "description": "Apply a valid coupon discount. Expected: finalPrice = 90 (100 - 10)"
+      },
+      "response": []
+    },
+    {
+      "name": "Apply Discount - Coupon Not Assigned",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user\": {\n        \"id\": \"user123\",\n        \"assignedCouponCodes\": [\n            \"SAVE10\"\n        ]\n    },\n    \"coupon\": {\n        \"code\": \"NOTASSIGNED\",\n        \"discountAmount\": 20,\n        \"expiryDate\": \"2099-12-31\"\n    },\n    \"originalSubscriptionPrice\": 100\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/billing/apply-discount",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["billing", "apply-discount"]
+        },
+        "description": "Try to apply a coupon that is not assigned to the user. Expected: finalPrice = 100 (original price)"
+      },
+      "response": []
+    },
+    {
+      "name": "Apply Discount - Expired Coupon",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user\": {\n        \"id\": \"user123\",\n        \"assignedCouponCodes\": [\n            \"EXPIRED10\"\n        ]\n    },\n    \"coupon\": {\n        \"code\": \"EXPIRED10\",\n        \"discountAmount\": 10,\n        \"expiryDate\": \"2020-01-01\"\n    },\n    \"originalSubscriptionPrice\": 100\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/billing/apply-discount",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["billing", "apply-discount"]
+        },
+        "description": "Try to apply an expired coupon. Expected: finalPrice = 100 (original price)"
+      },
+      "response": []
+    },
+    {
+      "name": "Apply Discount - Large Discount (No Negative)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user\": {\n        \"id\": \"user123\",\n        \"assignedCouponCodes\": [\n            \"MEGA500\"\n        ]\n    },\n    \"coupon\": {\n        \"code\": \"MEGA500\",\n        \"discountAmount\": 500,\n        \"expiryDate\": \"2099-12-31\"\n    },\n    \"originalSubscriptionPrice\": 100\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/billing/apply-discount",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["billing", "apply-discount"]
+        },
+        "description": "Apply a discount larger than the price. Expected: finalPrice = 0 (never negative)"
+      },
+      "response": []
+    },
+    {
+      "name": "Apply Discount - Validation Error (Missing Fields)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user\": {\n        \"id\": \"user123\"\n    },\n    \"coupon\": {\n        \"code\": \"SAVE10\"\n    }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/billing/apply-discount",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["billing", "apply-discount"]
+        },
+        "description": "Send invalid request with missing required fields. Expected: 400 Bad Request with validation errors"
+      },
+      "response": []
+    },
+    {
+      "name": "Apply Discount - Invalid Discount Amount",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user\": {\n        \"id\": \"user123\",\n        \"assignedCouponCodes\": [\n            \"INVALID\"\n        ]\n    },\n    \"coupon\": {\n        \"code\": \"INVALID\",\n        \"discountAmount\": 2000,\n        \"expiryDate\": \"2099-12-31\"\n    },\n    \"originalSubscriptionPrice\": 100\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/billing/apply-discount",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["billing", "apply-discount"]
+        },
+        "description": "Try to apply a coupon with discount amount > 1000. Expected: 400 Bad Request (validation error)"
+      },
+      "response": []
+    },
+    {
+      "name": "Apply Discount - Case Insensitive Coupon Code",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user\": {\n        \"id\": \"user123\",\n        \"assignedCouponCodes\": [\n            \"SAVE10\"\n        ]\n    },\n    \"coupon\": {\n        \"code\": \"save10\",\n        \"discountAmount\": 10,\n        \"expiryDate\": \"2099-12-31\"\n    },\n    \"originalSubscriptionPrice\": 100\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/billing/apply-discount",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["billing", "apply-discount"]
+        },
+        "description": "Apply discount with lowercase coupon code (case-insensitive matching). Expected: finalPrice = 90"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

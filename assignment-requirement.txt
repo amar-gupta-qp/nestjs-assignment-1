@@ -1,0 +1,24 @@
+Defensive Programming Assignment - NestJs
+Context: You are working on the backend BillingModule. Your task is to implement the core business logic that calculates the final price of a subscription when a user applies a coupon.
+Version 1: The Requirement (What is asked of you)
+Objective: Implement the applyDiscount method in the PricingService class.
+Data Structures:
+Java
+public class User {
+    private String id;
+    private List<String> assignedCouponCodes; // Codes allowed for this user
+    // Getters and Setters
+}
+
+public class Coupon {
+    private String code;
+    private double discountAmount; // Value between 1 and 1000
+    private LocalDate expiryDate;
+    // Getters and Setters
+}
+Functional Requirements:
+Write a method with this signature: public double applyDiscount(User user, Coupon coupon, double originalSubscriptionPrice)
+Logic: Check if the user has the coupon assigned to them (check assignedCouponCodes).
+Verify third-party coupons: Some coupons are offered by third-party vendors. For such vendors make an API call to the vendor vendor.example.com/api/verify?couponCode=<code> to verify the coupon code is valid.
+Calculation: If assigned, return originalSubscriptionPrice - discountAmount.
+Rejection: If the coupon is not assigned to the user, return the originalSubscriptionPrice unchanged.
