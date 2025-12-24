@@ -1,19 +1,18 @@
-import {Injectable, Logger, Inject} from '@nestjs/common'
-import {HttpService} from '@nestjs/axios'
-import {firstValueFrom, timeout, catchError} from 'rxjs'
+import {Injectable, Logger} from '@nestjs/common'
 import {UserDto} from '../dtos/UserDto'
 import {CouponDto} from '../dtos/CouponDto'
-import {VendorConfigType} from '../../../../config/VendorConfig'
+import {CouponValidationService} from './CouponValidationService'
+import {CouponAssignmentService} from './CouponAssignmentService'
+import {VendorIntegrationService} from './VendorIntegrationService'
 
 @Injectable()
 export class PricingService {
   private readonly logger = new Logger(PricingService.name)
-  private readonly MIN_DISCOUNT = 1
-  private readonly MAX_DISCOUNT = 1000
 
   constructor(
-    private readonly httpService: HttpService,
-    @Inject('vendor') private readonly vendorConfig: VendorConfigType,
+    private readonly couponValidationService: CouponValidationService,
+    private readonly couponAssignmentService: CouponAssignmentService,
+    private readonly vendorIntegrationService: VendorIntegrationService,
   ) {}
 
   async applyDiscount(
@@ -21,92 +20,61 @@ export class PricingService {
     coupon: CouponDto,
     originalSubscriptionPrice: number,
   ): Promise<number> {
-    if (!this.isValidCoupon(coupon)) {
-      this.logger.warn('Invalid coupon object')
+    if (!this.couponValidationService.isValidStructure(coupon)) {
       return originalSubscriptionPrice
     }
 
-    // Check coupon assignment
-    if (!this.isCouponAssigned(user, coupon)) {
-      this.logger.debug(
-        `Coupon ${coupon.code} not assigned to user ${user.id}`,
-      )
+    const isAssigned = await this.couponAssignmentService.isAssignedToUser(
+      user,
+      coupon,
+    )
+    if (!isAssigned) {
       return originalSubscriptionPrice
     }
 
-    // Check expiry
-    if (this.isCouponExpired(coupon)) {
-      this.logger.debug(`Coupon ${coupon.code} expired`)
+    if (this.couponValidationService.isExpired(coupon)) {
       return originalSubscriptionPrice
     }
 
-    // Verify third-party coupon
+    const hasUses = await this.couponValidationService.hasRemainingUses(
+      coupon.code,
+    )
+    if (!hasUses) {
+      return originalSubscriptionPrice
+    }
+
     if (coupon.isThirdParty) {
-      const isValid = await this.verifyThirdPartyCoupon(coupon.code)
+      const isValid = await this.vendorIntegrationService.verifyThirdPartyCoupon(
+        coupon.code,
+      )
       if (!isValid) {
-        this.logger.debug(
-          `Third-party coupon ${coupon.code} verification failed`,
-        )
+        this.logger.debug(`Third-party coupon ${coupon.code} verification failed`)
         return originalSubscriptionPrice
       }
     }
 
-    // Calculate final price (never negative)
-    const finalPrice = Math.max(
-      0,
-      originalSubscriptionPrice - coupon.discountAmount,
+    const finalPrice = this.calculateFinalPrice(
+      originalSubscriptionPrice,
+      coupon.discountAmount,
     )
-    this.logger.debug(
-      `Applied ${coupon.code}: ${originalSubscriptionPrice} -> ${finalPrice}`,
+
+    // Mark coupon as used in database (only if numeric user ID)
+    const userId = parseInt(user.id, 10)
+    if (!isNaN(userId)) {
+      await this.couponAssignmentService.markCouponAsUsed(userId, coupon.code)
+    }
+
+    this.logger.log(
+      `Applied coupon ${coupon.code} for user ${user.id}: ${originalSubscriptionPrice} -> ${finalPrice}`,
     )
 
     return finalPrice
   }
 
-  private isValidCoupon(coupon: CouponDto): boolean {
-    return (
-      coupon != null &&
-      typeof coupon.code === 'string' &&
-      coupon.code.trim().length > 0 &&
-      typeof coupon.discountAmount === 'number' &&
-      coupon.discountAmount >= this.MIN_DISCOUNT &&
-      coupon.discountAmount <= this.MAX_DISCOUNT &&
-      coupon.expiryDate instanceof Date &&
-      !isNaN(coupon.expiryDate.getTime())
-    )
-  }
-
-  private isCouponAssigned(user: UserDto, coupon: CouponDto): boolean {
-    const normalizedCode = coupon.code.trim().toUpperCase()
-    return user.assignedCouponCodes.some(
-      (code) => code?.trim().toUpperCase() === normalizedCode,
-    )
-  }
-
-  private isCouponExpired(coupon: CouponDto): boolean {
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-    return coupon.expiryDate < now
-  }
-
-  private async verifyThirdPartyCoupon(code: string): Promise<boolean> {
-    try {
-      const url = `${this.vendorConfig.apiUrl}${this.vendorConfig.verifyPath}?couponCode=${encodeURIComponent(code)}`
-
-      const response = await firstValueFrom(
-        this.httpService.get<{valid: boolean}>(url).pipe(
-          timeout(this.vendorConfig.timeout),
-          catchError((err) => {
-            this.logger.error(`Vendor API error: ${err.message}`)
-            throw err
-          }),
-        ),
-      )
-
-      return response.data?.valid === true
-    } catch {
-      // Fail-safe: reject coupon on API failure
-      return false
-    }
+  private calculateFinalPrice(
+    originalPrice: number,
+    discountAmount: number,
+  ): number {
+    return Math.max(0, originalPrice - discountAmount)
   }
 }

@@ -17,7 +17,6 @@ describe('BillingController (e2e)', () => {
 
     app = moduleFixture.createNestApplication()
 
-    // Apply global validation pipe (same as in main.ts)
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -26,7 +25,6 @@ describe('BillingController (e2e)', () => {
       }),
     )
 
-    // Apply global exception filter
     const httpAdapter = app.get(HttpAdapterHost)
     const responseService = app.get(ResponseService)
     const errorLogService = app.get(ErrorLogService)
@@ -63,7 +61,11 @@ describe('BillingController (e2e)', () => {
         .send(validRequest)
         .expect(201)
         .expect((res) => {
-          expect(res.body.finalPrice).toBe(90)
+          expect(res.body.success).toBe(true)
+          expect(res.body.data.finalPrice).toBe(90)
+          expect(res.body.data.originalPrice).toBe(100)
+          expect(res.body.data.discountApplied).toBe(10)
+          expect(res.body.data.couponCode).toBe('SAVE10')
         })
     })
 
@@ -81,7 +83,9 @@ describe('BillingController (e2e)', () => {
         .send(invalidRequest)
         .expect(201)
         .expect((res) => {
-          expect(res.body.finalPrice).toBe(100)
+          expect(res.body.success).toBe(true)
+          expect(res.body.data.finalPrice).toBe(100)
+          expect(res.body.data.discountApplied).toBe(0)
         })
     })
 
@@ -90,7 +94,6 @@ describe('BillingController (e2e)', () => {
         user: {
           id: 'user123',
         },
-        // Missing coupon and originalSubscriptionPrice
       }
 
       return request(app.getHttpServer())
@@ -104,7 +107,7 @@ describe('BillingController (e2e)', () => {
         ...validRequest,
         coupon: {
           ...validRequest.coupon,
-          discountAmount: 1001, // Above max
+          discountAmount: 1001,
         },
       }
 
@@ -141,7 +144,8 @@ describe('BillingController (e2e)', () => {
         .send(requestWithLargeDiscount)
         .expect(201)
         .expect((res) => {
-          expect(res.body.finalPrice).toBe(0)
+          expect(res.body.success).toBe(true)
+          expect(res.body.data.finalPrice).toBe(0)
         })
     })
   })

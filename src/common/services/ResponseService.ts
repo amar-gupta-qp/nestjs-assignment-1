@@ -1,11 +1,11 @@
 import {Injectable} from '@nestjs/common'
 
-interface IFieldValidationError {
+export interface IFieldValidationError {
   field: string
   message: string
 }
 
-interface IApiResponse<T = any> {
+export interface IApiResponse<T = any> {
   success: boolean
   data?: T
   error?: string

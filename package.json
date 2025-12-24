@@ -11,6 +11,7 @@
     "format:ci": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
+    "start:seed": "SEED_DATA=true nest start",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
@@ -21,7 +22,19 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:ci": "CI=true ENVIRONMENT=test jest --watchAll=false --silent=false --coverage --detectOpenHandles --passWithNoTests",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:e2e:ci": "CI=true ENVIRONMENT=test jest --config ./test/jest-e2e.json --coverage --detectOpenHandles --maxWorkers=1 --forceExit"
+    "test:e2e:ci": "CI=true ENVIRONMENT=test jest --config ./test/jest-e2e.json --coverage --detectOpenHandles --maxWorkers=1 --forceExit",
+    "docker:up": "docker-compose up",
+    "docker:up:d": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:down:v": "docker-compose down -v",
+    "docker:build": "docker-compose build",
+    "docker:rebuild": "docker-compose up -d --build",
+    "docker:logs": "docker-compose logs -f",
+    "docker:logs:app": "docker-compose logs -f app",
+    "docker:logs:db": "docker-compose logs -f mysql",
+    "docker:exec": "docker-compose exec app sh",
+    "docker:test": "docker-compose exec app npm test",
+    "docker:test:e2e": "docker-compose exec app npm run test:e2e"
   },
   "dependencies": {
     "@nestjs/axios": "^3.0.1",

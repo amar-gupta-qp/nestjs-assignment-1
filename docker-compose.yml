@@ -1,0 +1,54 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: billing-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_DATABASE: ${DB_DATABASE:-billing}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - billing-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: billing-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      DB_DATABASE: ${DB_DATABASE:-billing}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+      DB_LOGGING: ${DB_LOGGING:-false}
+      VENDOR_API_URL: ${VENDOR_API_URL:-https://vendor.example.com}
+      VENDOR_TIMEOUT_MS: ${VENDOR_TIMEOUT_MS:-5000}
+      VENDOR_VERIFY_PATH: ${VENDOR_VERIFY_PATH:-/api/verify}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - billing-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  billing-network:
+    driver: bridge

@@ -40,3 +40,6 @@ Thumbs.db
 # Misc
 .cache
 .temp
+
+# Documentation (internal)
+QuestionPro NestJs Stack Rules - Google Docs.pdf

@@ -1,14 +1,17 @@
 import {Module} from '@nestjs/common'
 import {ConfigModule} from '@nestjs/config'
 import {TypeOrmModule} from '@nestjs/typeorm'
-import {TerminusModule} from '@nestjs/terminus'
 import {HttpModule} from '@nestjs/axios'
 import {PrometheusModule} from '@willsoto/nestjs-prometheus'
 import {BillingModule} from './modules/billing/BillingModule'
-import {HealthController} from './health/HealthController'
+import {HealthModule} from './modules/health/HealthModule'
+import {DatabaseModule} from './database/DatabaseModule'
 import {ErrorLogEntity} from './common/entities/ErrorLogEntity'
 import {ErrorLogService} from './common/services/ErrorLogService'
 import {ResponseService} from './common/services/ResponseService'
+import {UserEntity} from './modules/billing/domain/entities/UserEntity'
+import {CouponEntity} from './modules/billing/domain/entities/CouponEntity'
+import {UserCouponEntity} from './modules/billing/domain/entities/UserCouponEntity'
 import {databaseConfig} from './config/DatabaseConfig'
 import {vendorConfig} from './config/VendorConfig'
 
@@ -26,13 +29,12 @@ import {vendorConfig} from './config/VendorConfig'
         username: process.env.DB_USERNAME || 'root',
         password: process.env.DB_PASSWORD || '',
         database: process.env.DB_DATABASE || 'billing',
-        entities: [ErrorLogEntity],
+        entities: [ErrorLogEntity, UserEntity, CouponEntity, UserCouponEntity],
         synchronize: process.env.DB_SYNCHRONIZE === 'true',
         logging: process.env.DB_LOGGING === 'true',
       }),
     }),
     TypeOrmModule.forFeature([ErrorLogEntity]),
-    TerminusModule,
     HttpModule,
     PrometheusModule.register({
       defaultMetrics: {
@@ -40,9 +42,10 @@ import {vendorConfig} from './config/VendorConfig'
       },
       path: '/metrics',
     }),
+    HealthModule,
     BillingModule,
+    DatabaseModule,
   ],
-  controllers: [HealthController],
   providers: [ErrorLogService, ResponseService],
 })
 export class AppModule {}
